@@ -1,13 +1,16 @@
 [project]
 name = "aronanet"
 version = "0.1.0"
-description = "Custom chat protocol - Blue Archive themed"
+description = "Custom chat app thingamajig"
+readme = "README.md"
 authors = [{name = "XeonXE534", email = "your-email@example.com"}]
 requires-python = ">=3.10"
 dependencies = [
     "cryptography>=41.0.0",
     "pyaml",
-    "dnspython"
+    "dnspython",
+    "asyncio",
+    "rich"
 ]
 
 [project.optional-dependencies]

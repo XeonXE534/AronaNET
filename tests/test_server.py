@@ -1,7 +1,6 @@
 # test_local_server.py
 import asyncio
 
-
 async def handle_echo(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"[+] Connection from {addr}")
@@ -35,10 +34,10 @@ async def handle_echo(reader, writer):
 
 async def main():
     server = await asyncio.start_server(
-        handle_echo, '127.0.0.1', 47500
+        handle_echo, '0.0.0.0', 47500
     )
 
-    print(f"[*] Server listening on 127.0.0.1:47500")
+    print(f"[*] Server listening on 0.0.0.0:47500")
 
     async with server:
         await server.serve_forever()
