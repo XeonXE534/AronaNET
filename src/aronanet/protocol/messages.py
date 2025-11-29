@@ -5,7 +5,8 @@ from typing import ClassVar
 import zlib
 
 from ..utils.logger import get_logger
-from .crypto import encrypt, decrypt
+
+logger = get_logger("ProtocolControl")
 
 class MessageType(IntEnum):
     """Protocol defining"""
@@ -33,7 +34,6 @@ class Message:
     _counter: ClassVar[int] = 0
     _lock: ClassVar[Lock] = Lock()
 
-    logger = get_logger("ProtocolControl")
 
     def __post_init__(self):
         if self.msg_id is None:
@@ -41,10 +41,20 @@ class Message:
                 self.msg_id = Message._counter
                 Message._counter = (Message._counter +1) % 65536
 
-    def pack(self):
-        """Pack message"""
-        nonce, enc_payload = encrypt(self.payload)
-        body = nonce + enc_payload
+    def pack(self, secure_channel= None):
+        """
+        Pack message into wire
+
+        Args:
+            secure_channel: SecureChannel instance for encryption
+        """
+        if secure_channel and self.msg_type not in (MessageType.HI, MessageType.AUTH):
+            nonce, enc_payload = secure_channel.encrypt(self.payload)
+            body = nonce + enc_payload
+
+        else:
+            body = self.payload
+
         length = len(body)
         header = (
                 bytes([self.version, self.msg_type]) +
@@ -53,33 +63,48 @@ class Message:
         )
         checksum = zlib.crc32(header + body).to_bytes(4, "big")
 
-        self.logger.debug(f"Packing msg_id: {self.msg_id}, type: {self.msg_type.name}, length: {length} :)")
+        logger.debug(f"Packing msg_id: {self.msg_id}, type: {self.msg_type.name}, length: {length} :)")
         return header + body + checksum
 
     @classmethod
-    def unpack(cls, data: bytes):
-        """Unpack message"""
+    def unpack(cls, data: bytes, secure_channel= None):
+        """
+        Unpack message from wire
+
+        Args:
+            data: Raw bytes from network
+            secure_channel: SecureChannel instance for decryption
+        """
+        if len(data) < 8:
+            raise ValueError("Data too short for header")
+
         version = data[0]
         msg_type = MessageType(data[1])
         length = int.from_bytes(data[2:6], "big")
         msg_id = int.from_bytes(data[6:8], "big")
 
         if len(data) < 8 + length + 4:
-            cls.logger.error(f"Data too short message :/")
+            logger.error(f"Data too short message :/")
             raise ValueError("Data too short message")
 
         body = data[8:8 + length]
-        nonce = body[:12]
-        ciphertext = body[12:]
 
         checksum_recv = int.from_bytes(data[8 + length:12 + length], "big")
-        checksum_calc = zlib.crc32(data[0:8] + body)
+        checksum_calc = zlib.crc32(data[0:8 + length])
         if checksum_calc != checksum_recv:
             raise ValueError("Checksum mismatch :(")
 
-        payload = decrypt(nonce, ciphertext)
+        if secure_channel and msg_type not in (MessageType.HI, MessageType.AUTH):
+            if len(body) < 12:
+                raise ValueError("Encrypted body too short :(")
+            nonce = body[:12]
+            ciphertext = body[12:]
+            payload = secure_channel.decrypt(nonce, ciphertext)
 
-        cls.logger.debug(f"Unpacked msg_id: {msg_id}, type: {msg_type.name} :)")
+        else:
+            payload = body
+
+        logger.debug(f"Unpacked msg_id: {msg_id}, type: {msg_type.name} :)")
         msg = cls(version=version, msg_type=msg_type, payload=payload)
         msg.msg_id = msg_id
         return msg

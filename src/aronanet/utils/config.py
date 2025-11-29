@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional
 
 from .logger import get_logger
 
+logger = get_logger("AronaSettings")
+
 class AronaSettings:
     DEFAULT_SETTINGS = {
         "host": "127.0.0.1",
@@ -18,7 +20,7 @@ class AronaSettings:
         else:
             self.config_path = Path.home() / ".aronanet" / "config.yaml"
 
-        self.logger = get_logger("AronaSettings")
+        
         self.settings: Dict[str, Any] = self.DEFAULT_SETTINGS.copy()
         self._ensure_config_dir()
         self.load()
@@ -29,7 +31,7 @@ class AronaSettings:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
         except Exception as e:
-            self.logger.error(f"Failed to create config directory: {e} :(")
+            logger.error(f"Failed to create config directory: {e} :(")
 
     def load(self):
         """Load settings from YAML, or create default if missing"""
@@ -43,10 +45,10 @@ class AronaSettings:
                 self.settings.update(loaded)
 
         except yaml.YAMLError as e:
-            self.logger.error(f"YAML error while loading config: {e} :/")
+            logger.error(f"YAML error while loading config: {e} :/")
 
         except Exception as e:
-            self.logger.error(f"Failed to load config: {e} :(")
+            logger.error(f"Failed to load config: {e} :(")
 
     def save(self):
         """Save current settings to YAML"""
@@ -55,7 +57,7 @@ class AronaSettings:
                 yaml.dump(self.settings, f, default_flow_style=False, sort_keys=False)
 
         except Exception as e:
-            self.logger.error(f"Failed to save config: {e} :(")
+            logger.error(f"Failed to save config: {e} :(")
 
     def get(self, key: str, default=None):
         return self.settings.get(key, default)
@@ -69,4 +71,4 @@ class AronaSettings:
         """Reset all settings to default"""
         self.settings = self.DEFAULT_SETTINGS.copy()
         self.save()
-        self.logger.info("Settings reset to default :|")
+        logger.info("Settings reset to default :|")
