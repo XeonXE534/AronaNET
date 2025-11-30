@@ -32,7 +32,7 @@ A flexible networking system with encryption, auth, tunnel support, and a Textua
 
 * **Textual TUI (Planned)** – Config, client list, logs, connection control
 * **Port Discovery (Planned)** – Auto-detect + auto-forward ports
-* **Portable** – Works on Linux, and Termux
+* **Portable** – Works on Linux, and Termux (if you can wait long enough for Cryptography to compile)
 * **Future Mobile APK** – Maybe… eventually…
 
 ---
