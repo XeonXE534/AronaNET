@@ -40,8 +40,8 @@ A flexible networking system with encryption, auth, tunnel support, and a Textua
 ## Installation
 
 ```bash
-git clone https://github.com/XeonXE534/AoNET.git
-cd AoNET
+git clone https://github.com/XeonXE534/AronaNET.git
+cd AronaNET
 bash ./install.sh
 ````
 
