@@ -18,7 +18,7 @@ class AronaSettings:
         if config_path:
             self.config_path = Path(config_path)
         else:
-            self.config_path = Path.home() / ".aronanet" / "config.yaml"
+            self.config_path = Path.home() / "AronaNET" / "config" / "config.yaml"
 
         
         self.settings: Dict[str, Any] = self.DEFAULT_SETTINGS.copy()
