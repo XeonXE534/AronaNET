@@ -7,7 +7,7 @@ def get_logger(name: str = "app_logger") -> logging.Logger:
     if not logger.hasHandlers():
         logger.setLevel(logging.DEBUG)
 
-        log_dir = Path.home() / ".aronanet" / "logs"
+        log_dir = Path.home() / "AronaNET" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = str(log_dir / "AronaNET.log")
 

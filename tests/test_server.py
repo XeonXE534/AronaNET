@@ -1,4 +1,3 @@
-# test_local_server.py
 import asyncio
 
 async def handle_echo(reader, writer):

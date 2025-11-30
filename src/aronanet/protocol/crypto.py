@@ -67,9 +67,9 @@ class KeyExchange:
             peer_public_bytes = x25519.X25519PublicKey.from_public_bytes(peer_public_bytes)
             shared_key = self.private_key.exchange(peer_public_bytes)
 
-            logger.info("Shared key derived succesfully :3")
+            logger.info("Shared key derived successfully :3")
             return shared_key
 
         except Exception as e:
-            logger.error(f"Key exhange failed: {e} :(")
+            logger.error(f"Key exchange failed: {e} :(")
             raise

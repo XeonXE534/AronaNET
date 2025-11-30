@@ -30,11 +30,11 @@ class ClientConnection:
             msg = await self.read_msg(encrypted=False)
 
             if msg.msg_type != MessageType.HI:
-                logger.warning(f"Expected HI, got {msg.msg_type.name} from {self.addr}")
+                logger.warning(f"Expected HI, got {msg.msg_type.name} from {self.user}")
                 return False
 
             if len(msg.payload) != 32:
-                logger.error(f"Invalid pubkey length from {self.addr}")
+                logger.error(f"Invalid pubkey length from {self.user}")
                 return False
 
             client_pubkey = msg.payload
@@ -73,10 +73,12 @@ class ClientConnection:
         self.writer.write(len(packed).to_bytes(4, "big") + packed)
         await self.writer.drain()
 
-    def close(self):
+    async def close(self):
         """Close connection"""
         try:
             self.writer.close()
+            await self.writer.wait_closed()
+
         except Exception as e:
             logger.warning(f"Failed to close connection: {e}")
             pass

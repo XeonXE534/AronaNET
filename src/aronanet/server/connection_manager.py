@@ -1,7 +1,7 @@
 from typing import  Dict, Set, Optional, List
 
 from .connection import ClientConnection
-from ..protocol.messages import Message, MessageType
+from ..protocol.messages import Message
 from ..utils.logger import get_logger
 
 logger = get_logger("ConnectionManager")
@@ -24,6 +24,7 @@ class ConnectionManager:
 
         self.connections[username] = conn
         self.join_channel(username, "general")
+        conn.channel = "general"
 
         logger.info(f"{username} added to connection pool :)")
 
@@ -47,11 +48,15 @@ class ConnectionManager:
             self.leave_channel(username, self.user_channels[username])
 
         if channel not in self.channels:
-            self.channels[channel] = Set()
+            self.channels[channel] = set()
             logger.info(f"Created new channel #{channel} :3")
 
         self.channels[channel].add(username)
         self.user_channels[username] = channel
+
+        conn = self.get_connection(username)
+        if conn:
+            conn.channel = channel
 
         logger.info(f"{username} joined #{channel} :)")
 

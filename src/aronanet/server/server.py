@@ -1,5 +1,4 @@
 import asyncio
-import shlex
 from rich.console import Console
 from typing import Dict
 
@@ -8,29 +7,10 @@ from ..utils.config import AronaSettings
 from ..protocol.messages import Message, MessageType
 from .connection_manager import ConnectionManager
 from .connection import ClientConnection
+from .bore_manager import BoreManager
 
 console = Console()
 logger = get_logger("AronaServer")
-
-async def start_bore(local_port: int, bore_token: str):
-    """Start Bore as a subprocess and return the process handle"""
-    cmd = f"bore local {local_port} --to {bore_token}"
-    args = shlex.split(cmd)
-
-    proc = await asyncio.create_subprocess_exec(
-        *args,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-
-    async def log_output(stream, name):
-        async for line in stream:
-            print(f"[{name}] {line.decode().rstrip()}")
-
-    asyncio.create_task(log_output(proc.stdout, "bore"))
-    asyncio.create_task(log_output(proc.stderr, "bore-err"))
-
-    return proc
 
 class AronaServer:
     """Async raw TCP server for AoNET"""
@@ -41,8 +21,31 @@ class AronaServer:
         self.max_conn = self.config.get("max_connections")
         self.clients: Dict[str, ClientConnection] = {}
         self.conn_manager = ConnectionManager()
-        
-        self.bore_proc = None
+
+        self.bore = BoreManager(
+            local_port=self.port,
+            auto_reconn=True,
+            reconn_delay=5.0
+        )
+        self.bore.on_url_change = self._handle_url_change
+        self.bore.on_connected = self._handle_connected
+        self.bore.on_disconnected = self._handle_disconnected
+
+    @staticmethod #for now to stop Pycharm whining...
+    async def _handle_url_change(new_url: str):
+        """Called when bore URL changes"""
+        console.print(f"[!] Bore URL changed: {new_url}")
+        # TODO: Update DNS
+
+    @staticmethod
+    async def _handle_connected(url: str):
+        """Called when bore connects"""
+        console.print(f"[✓] Bore connected: {url}")
+
+    @staticmethod
+    async def _handle_disconnected():
+        """Called when bore disconnects"""
+        console.print(f"[!] Bore disconnected")
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         conn = ClientConnection(reader, writer)
@@ -81,6 +84,8 @@ class AronaServer:
             conn.authenticated = True
             self.clients[username] = conn
 
+            self.conn_manager.add_user(username, conn)
+
             reply = Message(msg_type=MessageType.AUTH_OK, payload=f'Welcome {username}!'.encode())
             await conn.send_msg(reply)
 
@@ -106,7 +111,7 @@ class AronaServer:
                     await self.conn_manager.scream_to_channel(
                         channel,
                         broadcast_msg,
-                        # exclude=username
+                        exclude=username
                     )
 
                 elif msg.msg_type == MessageType.SUP:
@@ -159,29 +164,59 @@ class AronaServer:
 
                 self.conn_manager.remove_user(conn.username)
 
-            conn.close()
+            await conn.close()
 
     async def start(self):
-        # Start server first
         server = await asyncio.start_server(
             self.handle_client, self.host, self.port
         )
         logger.info(f"Server listening on {self.host}:{self.port} :3")
         console.print(f"[*] Server listening on {self.host}:{self.port}")
 
-        # Then start Bore
-        bore_token = "bore.pub"
-        self.bore_proc = await start_bore(self.port, bore_token)
+        console.print("[*] Starting bore tunnel...")
+        public_url = await self.bore.start()
 
-        async with server:
-            await server.serve_forever()
+        if public_url:
+            console.print(f"[✓] Public URL: {public_url}")
+        else:
+            console.print("[!] Failed to start bore - server only accessible locally")
+
+        console.print("\n[*] Server ready! Press Ctrl+C to stop\n")
+
+        try:
+            async with server:
+                await server.serve_forever()
+
+        except asyncio.CancelledError:
+            pass
+
+        finally:
+            await self.stop()
 
     async def stop(self):
-        # Cleanup Bore
-        if self.bore_proc:
-            self.bore_proc.terminate()
-            await self.bore_proc.wait()
+        """Cleanup on shutdown"""
+        console.print("\n[*] Shutting down...")
 
-if __name__ == "__main__":
-    cfg = AronaSettings()
-    asyncio.run(AronaServer(cfg).start())
+        await self.bore.stop()
+
+        if hasattr(self, 'conn_manager'):
+            for username in list(self.conn_manager.get_all_users()):
+                conn = self.conn_manager.get_connection(username)
+
+                if conn:
+                    try:
+                        await conn.close()
+
+                    except Exception as e:
+                        logger.error(f"Error closing {username}: {e}")
+
+            console.print(f"[*] Closed {len(self.conn_manager.get_all_users())} connections")
+        console.print("[✓] Shutdown complete")
+
+
+def main():
+    try:
+        asyncio.run(AronaServer(AronaSettings()).start())
+    except KeyboardInterrupt:
+        console.print("[*] Shutting down…")
+    console.print("\n[*] Server stopped")

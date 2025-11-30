@@ -1,11 +1,7 @@
-# Test written by ChatGPT cuz I cant be arsed.
-# Yeah, yeah vide-coding tests is bad
-# But I don't use pytest much for testing, only for basic stuff
-# So it's fine...probably
-
 import pytest
-from src.aronanet.protocol.messages import Message, MessageType
 import zlib
+
+from src.aronanet.protocol.messages import Message, MessageType
 
 def test_message_pack_basic():
     msg = Message(msg_type=MessageType.TEXT, payload=b"hello")
