@@ -2,7 +2,7 @@
     <img src="images/halo.png" alt="logo" />
     <br>
     <img src="https://img.shields.io/badge/version-0.1.0-blue" />
-    <img src="https://img.shields.io/github/license/XeonXE534/AoNET" />
+    <img src="https://img.shields.io/github/license/XeonXE534/AronaNET" />
 </div>
 <br>
 
