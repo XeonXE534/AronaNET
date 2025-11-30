@@ -88,7 +88,6 @@ else
 fi
 info "Using Python: $($PYTHON_CMD --version 2>&1)"
 
-# Ensure pipx
 if ! command -v pipx &>/dev/null; then
   info "pipx not found, installing..."
   $PYTHON_CMD -m pip install --user pipx
@@ -96,14 +95,14 @@ if ! command -v pipx &>/dev/null; then
 fi
 
 info "Upgrading pipx..."
-pipx upgrade pipx >/dev/null 2>&1 &
+pip upgrade pipx >/dev/null 2>&1 &
 spinner $! "Upgrading pipx"
 
 cd "$Arona_DIR"
 
 if pipx list | grep -q 'Arona'; then
   info "Arona detected, upgrading..."
-  pipx upgrade Arona >/dev/null 2>&1 &
+  pipx install . --force >/dev/null 2>&1 &
   spinner $! "Upgrading Arona"
   success "Arona upgraded!"
 else
