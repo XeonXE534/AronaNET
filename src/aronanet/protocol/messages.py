@@ -17,6 +17,7 @@ class MessageType(IntEnum):
     TEXT = 0x10
     IMAGE = 0x11
     TYPING = 0x12
+    DM = 0x13
     ONLINE = 0x20
     OFFLINE = 0x21
     SUP = 0x30

@@ -22,11 +22,7 @@ class AronaServer:
         self.clients: Dict[str, ClientConnection] = {}
         self.conn_manager = ConnectionManager()
 
-        self.bore = BoreManager(
-            local_port=self.port,
-            auto_reconn=True,
-            reconn_delay=5.0
-        )
+        self.bore = BoreManager(local_port=self.port, auto_reconn=True, reconn_delay=5.0)
         self.bore.on_url_change = self._handle_url_change
         self.bore.on_connected = self._handle_connected
         self.bore.on_disconnected = self._handle_disconnected
@@ -106,13 +102,23 @@ class AronaServer:
                 if msg.msg_type == MessageType.TEXT:
                     channel = self.conn_manager.get_user_channel(username)
                     formatted = f'[{username}] {msg.payload.decode()}'.encode()
-                    broadcast_msg = Message(msg_type=MessageType.TEXT, payload=formatted)
-
-                    await self.conn_manager.scream_to_channel(
-                        channel,
-                        broadcast_msg,
-                        exclude=username
+                    broadcast_msg = Message(
+                        msg_type=MessageType.TEXT,
+                        payload=formatted
                     )
+
+                    await self.conn_manager.scream_to_channel(channel, broadcast_msg, exclude=username)
+
+                elif msg.msg_type == MessageType.DM:
+                    target, dm = msg.payload.decode().split(':', 1)
+                    formatted = f'[{username}] {dm}'.encode()
+                    dm_msg = Message(
+                        msg_type=MessageType.DM,
+                        payload=formatted
+                    )
+
+                    await self.conn_manager.scream_to_user(target, dm_msg)
+
 
                 elif msg.msg_type == MessageType.SUP:
                     new_channel = msg.payload.decode()

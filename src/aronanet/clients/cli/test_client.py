@@ -61,6 +61,7 @@ class SimpleClient:
             self.username = username
             print(f"[✓] {reply.payload.decode()}")
             return True
+
         else:
             print(f"[!] Auth failed: {reply.payload.decode()}")
             return False
@@ -68,6 +69,7 @@ class SimpleClient:
     async def send_text(self, text: str):
         msg = Message(msg_type=MessageType.TEXT, payload=text.encode())
         packed = msg.pack(self.secure_channel)
+
         self.writer.write(len(packed).to_bytes(4, 'big') + packed)
         await self.writer.drain()
 
@@ -80,16 +82,23 @@ class SimpleClient:
 
                 if msg.msg_type == MessageType.TEXT:
                     print(f"\r{msg.payload.decode()}\n>>> ", end='', flush=True)
+
+                elif msg.msg_type == MessageType.DM:
+                    print(f"\r[DM: {msg.payload.decode()}]\n>>> ", end='', flush=True)
+
                 elif msg.msg_type in (MessageType.ONLINE, MessageType.OFFLINE):
                     prefix = "[+]" if msg.msg_type == MessageType.ONLINE else "[-]"
                     print(f"\r{prefix} {msg.payload.decode()}\n>>> ", end='', flush=True)
 
         except asyncio.IncompleteReadError:
             print("\n[!] Server disconnected")
+
         except asyncio.CancelledError:
             pass
+
         except Exception as e:
             print(f"\n[!] Error receiving: {e}")
+
         finally:
             self.running = False
 
@@ -97,30 +106,61 @@ class SimpleClient:
         loop = asyncio.get_event_loop()
         try:
             while self.running:
-                # input is cancel-safe now
                 text = await loop.run_in_executor(None, input, ">>> ")
                 if not self.running:
                     break
+
                 if not text:
                     continue
+
                 if text.startswith('/'):
                     await self.handle_command(text)
+
                 else:
                     await self.send_text(text)
         except asyncio.CancelledError:
             pass
 
     async def handle_command(self, cmd: str):
-        if cmd == '/quit':
+        if cmd == '/quit' or cmd == '/q':
             print("[*] Disconnecting...")
             self.running = False
-        elif cmd.startswith('/join '):
-            channel = cmd[6:].strip()
+
+        elif cmd.startswith('/join ') or cmd.startswith('/j '):
+            parts = cmd.split(maxsplit=1)
+            if len(parts) < 2:
+                print("[!] No channel specified.")
+
+                return
+            channel = parts[1].strip()
+
             msg = Message(msg_type=MessageType.SUP, payload=channel.encode())
             packed = msg.pack(self.secure_channel)
+
             self.writer.write(len(packed).to_bytes(4, 'big') + packed)
             await self.writer.drain()
+
             print(f"[*] Joining #{channel}...")
+
+        elif cmd.startswith('/dm '):
+            parts = cmd.split(' ', 2)
+            if len(parts) < 3:
+                print("Usage: /dm username message")
+                return
+
+            _, user, usr_msg = parts
+
+            formatted = f'{user}:{usr_msg}'
+            msg = Message(msg_type=MessageType.DM, payload=formatted.encode())
+
+            packed = msg.pack(self.secure_channel)
+
+            self.writer.write(len(packed).to_bytes(4, 'big') + packed)
+            await self.writer.drain()
+
+        elif cmd == '/clear' or cmd == '/cl':
+            print("\033[2J\033[3J\033[1;1H", end='', flush=True)
+
         else:
             print(f"[!] Unknown command: {cmd}")
 
@@ -141,8 +181,10 @@ class SimpleClient:
             )
         except ConnectionRefusedError:
             print("[!] Connection refused - is server running?")
+
         except Exception as e:
             print(f"[!] Error: {e}")
+
         finally:
             await self.close()
 
@@ -153,6 +195,7 @@ class SimpleClient:
         if self._receiver_task and not self._receiver_task.done():
             self._receiver_task.cancel()
             tasks.append(self._receiver_task)
+
         if self._input_task and not self._input_task.done():
             self._input_task.cancel()
             tasks.append(self._input_task)
@@ -164,6 +207,7 @@ class SimpleClient:
             self.writer.close()
             try:
                 await self.writer.wait_closed()
+
             except Exception:
                 pass
         print("[*] Client cleanup complete")
@@ -185,5 +229,9 @@ async def _main():
 def main():
     try:
         asyncio.run(_main())
+
     except KeyboardInterrupt:
         print("\n[*] Exiting...")
+
+if __name__ == "__main__":
+    main()

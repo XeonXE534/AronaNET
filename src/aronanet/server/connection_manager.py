@@ -1,3 +1,4 @@
+from collections import deque
 from typing import  Dict, Set, Optional, List
 
 from .connection import ClientConnection
@@ -12,6 +13,7 @@ class ConnectionManager:
         self.connections: Dict[str, ClientConnection] = {}
         self.channels: Dict[str, Set[str]] = {"general": set()}
         self.user_channels: Dict[str, str] = {}
+        self.history: Dict[str, deque] = {"general": deque(maxlen=100)}
 
         logger.info("ConnectionManager initialized")
 
@@ -81,7 +83,7 @@ class ConnectionManager:
             return
 
         sent_count = 0
-        for username in self.channels[channel]:
+        for username in list(self.channels[channel]):
             if username == exclude:
                 continue
 
