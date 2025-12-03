@@ -82,7 +82,7 @@ aonet-client bore.pub {bore port provided by server}
 ## Notes
 
 * The TUI is still WIP. Right now everything is CLI-based.
-* Termux support is native, no hacks needed.
+* Probably works on Termux if you can wait long enough for Cryptography to download and PiP thing. I cant
 
 ---
 
